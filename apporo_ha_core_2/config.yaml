@@ -1,6 +1,6 @@
 name: "Apporo HA Core 2"
 description: "Apporo Home Assistant Core instance 2"
-version: "1.2.0"
+version: "2.3.0"
 slug: "apporo_ha_core_2"
 init: false
 webui: "http://[HOST]:[PORT:8123]/"
@@ -13,4 +13,4 @@ arch:
 ports:
   8123/tcp: 8125
 map:
-  - "config:rw"
+  - "addon_config:rw"

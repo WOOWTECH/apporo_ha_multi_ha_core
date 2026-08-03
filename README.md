@@ -26,11 +26,23 @@ for instance 1) to reach that Home Assistant instance.
 
 Each add-on:
 
-- Runs a Home Assistant Core image (`ghcr.io/woowtech/apporo-ha` on amd64, the official
+- Runs a Home Assistant Core image (`ghcr.io/woowtech/apporo-ha:2026.7.2` on amd64, the official
   `ghcr.io/home-assistant/home-assistant:stable` on other architectures).
-- Stores its configuration in a dedicated sub-directory under `/config`
-  (e.g. `/config/apporo_ha_core_1`), keeping each instance fully isolated.
+- Stores its configuration in its own private add-on config share (`addon_config`), mounted at
+  `/config`, keeping each instance fully isolated from the host's Home Assistant and from the
+  other instances.
+- Comes with a curated set of custom components pre-installed. On first boot the add-on seeds
+  them into `/config/custom_components` (seed-if-missing — it never overwrites folders you have
+  already added or edited). See [ADR 0002](docs/adr/0002-seed-curated-custom-components-on-boot.md).
 - Maps the container's `8123/tcp` port to a unique host port (8124–8128).
+
+## Upgrading to 2.3.0 (breaking change)
+
+Version `2.3.0` moves each instance from a sub-directory of the host's shared config
+(`/config/apporo_ha_core_N`) to its own private `addon_config` share. Configuration created by
+earlier versions under `/config/apporo_ha_core_N` is **not migrated** and will not be read by
+the new version — treat upgraded instances as fresh, or copy old data across manually. See
+[ADR 0001](docs/adr/0001-adopt-addon-config-isolation-model.md).
 
 ## Installation
 
