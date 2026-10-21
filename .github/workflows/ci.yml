@@ -1,0 +1,62 @@
+name: CI
+
+# Required check for the default branch (WOOW addon pipeline #88). The App
+# Store ships this repository's default branch head (registry ref_policy:
+# main) only after this workflow succeeded on that commit, so it runs on
+# every push to main, docs-only included, and on every pull request. It
+# validates each add-on and builds its amd64 image the way a Home Assistant
+# host builds it locally.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  validate:
+    name: Validate and build ${{ matrix.addon }} (amd64)
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        addon: [apporo_ha_core_1, apporo_ha_core_2, apporo_ha_core_3, apporo_ha_core_4, apporo_ha_core_5]
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+
+      - name: Check the manifest
+        id: manifest
+        env:
+          ADDON: ${{ matrix.addon }}
+        run: |
+          set -euo pipefail
+          for key in name slug version arch; do
+            [ "$(yq -r ".${key} // \"\"" "${ADDON}/config.yaml")" != "" ] || { echo "::error::${ADDON}/config.yaml has no ${key}"; exit 1; }
+          done
+          yq -e '.arch[] | select(. == "amd64")' "${ADDON}/config.yaml" >/dev/null || { echo "::error::${ADDON} does not support amd64"; exit 1; }
+          echo "version=$(yq -r '.version' "${ADDON}/config.yaml")" >> "$GITHUB_OUTPUT"
+          echo "base=$(yq -r '.build_from.amd64 // ""' "${ADDON}/build.yaml")" >> "$GITHUB_OUTPUT"
+
+      - name: Build the amd64 image
+        env:
+          ADDON: ${{ matrix.addon }}
+          BASE: ${{ steps.manifest.outputs.base }}
+          VERSION: ${{ steps.manifest.outputs.version }}
+        run: |
+          set -euo pipefail
+          args=(--build-arg BUILD_ARCH=amd64 --build-arg "BUILD_VERSION=${VERSION}")
+          [ -z "${BASE}" ] || args+=(--build-arg "BUILD_FROM=${BASE}")
+          # Supervisor also passes build.yaml's args as build arguments.
+          if [ -f "${ADDON}/build.yaml" ]; then
+            python3 -m pip install --quiet PyYAML
+            while IFS= read -r arg; do args+=(--build-arg "${arg}"); done \
+              < <(python3 -c 'import sys, yaml; [print(f"{k}={v}") for k, v in ((yaml.safe_load(open(sys.argv[1])) or {}).get("args") or {}).items()]' "${ADDON}/build.yaml")
+          fi
+          docker build "${args[@]}" -t "local/${ADDON}:${VERSION}" "${ADDON}"
