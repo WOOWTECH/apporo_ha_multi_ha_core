@@ -14,6 +14,7 @@ for n in 1 2 3 4 5; do
   mkdir -p "${dest}"
   cp -a "${SEED}/custom_components" "${dest}/custom_components"
   cp -a "${SEED}/apporo_seed.sh" "${dest}/apporo_seed.sh"
+  cp -a "${SEED}/seed_groups.py" "${dest}/seed_groups.py"
   chmod +x "${dest}/apporo_seed.sh"
   echo "synced -> apporo_ha_core_${n}/rootfs/opt/apporo_seed"
 done

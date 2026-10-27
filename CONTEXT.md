@@ -18,11 +18,26 @@ _Avoid_: install, provision, bootstrap
 
 **Seed-if-missing**:
 The rule that a component is only copied when its target folder is absent, so existing folders
-and user edits or removals are never overwritten.
+and user edits or removals are never overwritten. The one exception is an unused old
+**component group** (ADR 0003).
 _Avoid_: sync, overwrite, upgrade
 
+**Component group**:
+Old split components that upstream consolidated into one successor: permission
+(`ha_permission_manager` 1.x, `ha_area_control`, `ha_label_control` → `ha_permission_manager`
+2.x), records (`ha_finance`, `ha_asset_record`, `ha_health_record`, `ha_note_record` →
+`woow_ha_records`), protocol (`woow_dmx`, `woow_knx`, `woow_modbus` → `woow_multi_protocol`).
+_Avoid_: bundle, family
+
+**In use** (of a component group):
+At least one of: a config entry of an old domain, a `.storage` file named after an old domain,
+a non-empty `/config/dmx`, `/config/knx` or `/config/modbus` (protocol group), or a top-level
+`configuration.yaml` key that is an old domain. A group that cannot be checked counts as in use.
+An unused group's old folders are replaced on boot; a group in use is left alone.
+_Avoid_: active, enabled, configured
+
 **Canonical seed** (`_seed/`):
-The single source-of-truth copy of the 28 curated components plus the seed script and manifest.
+The single source-of-truth copy of the 21 curated components plus the seed script and manifest.
 `scripts/sync-seed.sh` materialises it into each instance's `rootfs/opt/apporo_seed/`.
 _Avoid_: master copy, template
 
