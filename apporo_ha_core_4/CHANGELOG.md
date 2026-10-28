@@ -33,8 +33,9 @@ not empty; `configuration.yaml` has a top-level key named after an old
 component. Once `ha_permission_manager` 2.x is present in `custom_components`,
 the config entry and `.storage` file it shares with 1.x no longer count. If the
 check cannot be made (for example `core.config_entries` or the
-`ha_permission_manager` manifest cannot be read), the group counts as in use. Only component code folders are ever deleted; config entries,
-`.storage` and YAML are never touched.
+`ha_permission_manager` manifest cannot be read), the group counts as in use.
+Only component code folders are ever deleted; config entries, `.storage` and
+YAML are never touched.
 
 New installations get the three new components directly.
 

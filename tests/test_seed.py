@@ -127,7 +127,7 @@ class SeedTest(unittest.TestCase):
         self.assertEqual(result.returncode, 0, self.log)
         self.assertIn("[test] homeassistant started", self.log)
 
-    def installed(self):
+    def present(self):
         return sorted(p.name for p in self.cc.iterdir()) if self.cc.exists() else []
 
     def marker(self, name):
@@ -137,7 +137,7 @@ class SeedTest(unittest.TestCase):
 
     def test_fresh_install_gets_the_new_layout(self):
         self.run_seed()
-        self.assertEqual(self.installed(), sorted(NEW + OTHER))
+        self.assertEqual(self.present(), sorted(NEW + OTHER))
         self.assertNotIn("removed", self.log)
 
     def test_factory_state_installed_but_unused_is_replaced(self):
@@ -145,22 +145,22 @@ class SeedTest(unittest.TestCase):
         self.install_old()
         self.config_entries("sun", "backup")
         self.run_seed()
-        self.assertEqual(self.installed(), sorted(NEW + OTHER))
+        self.assertEqual(self.present(), sorted(NEW + OTHER))
         self.assertEqual(self.marker("ha_permission_manager"), "seed")
         for name in OLD:
             self.assertIn(f"removed old component: {name}", self.log)
 
     def assert_only_group_kept(self, kept, reason):
-        installed = self.installed()
+        present = self.present()
         for group, old in GROUP_OLD.items():
             if group == kept:
                 for name in old:
-                    self.assertIn(name, installed)
+                    self.assertIn(name, present)
                     self.assertEqual(self.marker(name), "old")
                 if GROUP_NEW[group] not in old:
-                    self.assertNotIn(GROUP_NEW[group], installed)
+                    self.assertNotIn(GROUP_NEW[group], present)
             else:
-                self.assertEqual(sorted(set(old) & set(installed) - {GROUP_NEW[group]}), [])
+                self.assertEqual(sorted(set(old) & set(present) - {GROUP_NEW[group]}), [])
                 self.assertEqual(self.marker(GROUP_NEW[group]), "seed")
         self.assertIn(f"kept the old {kept} components: in use ({reason}", self.log)
 
@@ -210,7 +210,7 @@ class SeedTest(unittest.TestCase):
         self.config_entries("ha_permission_manager")
         self.storage_file("ha_permission_manager")
         self.run_seed()
-        self.assertEqual(self.installed(), sorted(NEW + OTHER))
+        self.assertEqual(self.present(), sorted(NEW + OTHER))
         self.assertIn("removed old component: ha_label_control", self.log)
 
     def test_old_permission_manager_signals_count_without_the_successor(self):
@@ -218,7 +218,7 @@ class SeedTest(unittest.TestCase):
         self.install_old(["ha_area_control", "ha_label_control"])
         self.config_entries("ha_permission_manager")
         self.run_seed()
-        self.assertEqual(self.installed(),
+        self.assertEqual(self.present(),
                          sorted(OTHER + ["ha_area_control", "ha_label_control",
                                          "woow_ha_records", "woow_multi_protocol"]))
         self.assertIn("kept the old permission components: in use "
@@ -241,25 +241,25 @@ class SeedTest(unittest.TestCase):
             self.install_old()
             (self.config / "configuration.yaml").write_text("homeassistant:\n  ha_finance:\n")
             self.run_seed()
-            self.assertEqual(self.installed(), sorted(NEW + OTHER))
+            self.assertEqual(self.present(), sorted(NEW + OTHER))
 
     def test_failed_undo_keeps_the_group_and_other_groups_are_still_seeded(self):
         self.install_old()
         # ha_finance moves out, ha_asset_record fails, moving ha_finance back fails.
         self.faults = "ha_asset_record>out,ha_finance>in"
         self.run_seed()
-        installed = self.installed()
+        present = self.present()
         self.assertEqual(self.marker("ha_permission_manager"), "seed")
-        self.assertIn("woow_multi_protocol", installed)
-        self.assertNotIn("woow_ha_records", installed)
-        self.assertNotIn("ha_finance", installed)
+        self.assertIn("woow_multi_protocol", present)
+        self.assertNotIn("woow_ha_records", present)
+        self.assertNotIn("ha_finance", present)
         # Next start: ha_finance comes back before anything else happens.
         self.faults = "ha_finance>out"
         self.run_seed()
-        installed = self.installed()
+        present = self.present()
         for name in GROUP_OLD["records"]:
             self.assertEqual(self.marker(name), "old")
-        self.assertNotIn("woow_ha_records", installed)
+        self.assertNotIn("woow_ha_records", present)
 
     def test_shell_fallback_lists_the_same_groups(self):
         table = re.search(r'^COMPONENT_GROUPS="([^"]*)"', SCRIPT.read_text(encoding="utf-8"), re.M).group(1)
@@ -271,12 +271,12 @@ class SeedTest(unittest.TestCase):
         self.install_old(GROUP_OLD["permission"])
         self.faults = "permission>out>kill"
         self.run_seed()
-        self.assertEqual(self.installed(),
+        self.assertEqual(self.present(),
                          sorted(OTHER + ["woow_ha_records", "woow_multi_protocol"]))
         # Next start: the folders come back and the unused group is replaced.
         self.faults = ""
         self.run_seed()
-        self.assertEqual(self.installed(), sorted(NEW + OTHER))
+        self.assertEqual(self.present(), sorted(NEW + OTHER))
         self.assertEqual(self.marker("ha_permission_manager"), "seed")
         self.assertNotIn("kept the old", self.log)
         self.assertEqual(list((self.config / seed_groups.TRASH).iterdir()), [])
@@ -286,14 +286,14 @@ class SeedTest(unittest.TestCase):
         self.install_old(GROUP_OLD["permission"] + GROUP_OLD["records"])
         self.faults = "ha_finance>out>kill"
         self.run_seed()
-        self.assertEqual(self.installed(),
+        self.assertEqual(self.present(),
                          sorted(OTHER + GROUP_OLD["records"]
                                 + ["ha_permission_manager", "woow_multi_protocol"]))
         self.assertEqual(self.marker("ha_permission_manager"), "seed")
         self.assertIn("kept the old records components", self.log)
         self.faults = ""
         self.run_seed()
-        self.assertEqual(self.installed(), sorted(NEW + OTHER))
+        self.assertEqual(self.present(), sorted(NEW + OTHER))
 
     def trash(self, folder, names):
         for name in names:
@@ -302,7 +302,7 @@ class SeedTest(unittest.TestCase):
     def test_leftover_done_folder_is_deleted_and_the_successor_seeded(self):
         self.trash("records.done", ["ha_finance", "ha_asset_record"])
         self.run_seed()
-        self.assertEqual(self.installed(), sorted(NEW + OTHER))
+        self.assertEqual(self.present(), sorted(NEW + OTHER))
         self.assertEqual(list((self.config / seed_groups.TRASH).iterdir()), [])
 
     def test_pending_folder_is_restored_then_the_group_is_judged(self):
@@ -318,7 +318,7 @@ class SeedTest(unittest.TestCase):
                 self.config_entries(*entries)
                 self.run_seed()
                 self.assertIn("restored ha_finance after an interrupted removal", self.log)
-                self.assertEqual(self.installed(), expected)
+                self.assertEqual(self.present(), expected)
                 self.assertEqual(list((self.config / seed_groups.TRASH).iterdir()), [])
 
     def test_restore_name_collision_keeps_the_group(self):
@@ -326,7 +326,7 @@ class SeedTest(unittest.TestCase):
         component(self.cc / "ha_finance", "2.1.1", marker="user")
         self.run_seed()
         self.assertEqual(self.marker("ha_finance"), "user")
-        self.assertNotIn("woow_ha_records", self.installed())
+        self.assertNotIn("woow_ha_records", self.present())
         self.assertTrue((self.config / seed_groups.TRASH / "records" / "ha_finance").is_dir())
         self.assertIn("could not restore ha_finance", self.log)
         self.assertIn("kept the old records components", self.log)
@@ -337,32 +337,35 @@ class SeedTest(unittest.TestCase):
         self.install_old(["ha_area_control"])
         self.run_seed()
         self.assertEqual(self.marker("ha_permission_manager"), "user")
-        self.assertIn("ha_area_control", self.installed())
+        self.assertIn("ha_area_control", self.present())
         self.assertIn("kept the old permission components", self.log)
+        self.assertIn("custom_components/ha_permission_manager/manifest.json cannot be read",
+                      self.log)
+        self.assertIn("Check or replace custom_components/ha_permission_manager.", self.log)
         self.assertEqual(self.marker("woow_ha_records"), "seed")
 
     def test_failing_group_check_on_a_fresh_install_still_seeds_the_successors(self):
         self.fake_python(fail_groups=True)
         self.run_seed()
-        self.assertEqual(self.installed(), sorted(NEW + OTHER))
+        self.assertEqual(self.present(), sorted(NEW + OTHER))
 
     def test_partly_removed_old_group_is_still_replaced(self):
         self.install_old(["ha_finance", "woow_knx"])
         self.run_seed()
-        self.assertEqual(self.installed(), sorted(NEW + OTHER))
+        self.assertEqual(self.present(), sorted(NEW + OTHER))
 
     def test_existing_successor_is_not_overwritten(self):
         self.install_old()
         component(self.cc / "woow_ha_records", "3.0.1", marker="user")
         self.run_seed()
-        self.assertEqual(self.installed(), sorted(NEW + OTHER))
+        self.assertEqual(self.present(), sorted(NEW + OTHER))
         self.assertEqual(self.marker("woow_ha_records"), "user")
 
     def test_newer_permission_manager_is_not_an_old_component(self):
         component(self.cc / "ha_permission_manager", "2.1.0", marker="user")
         self.install_old(["ha_area_control"])
         self.run_seed()
-        self.assertEqual(self.installed(), sorted(NEW + OTHER))
+        self.assertEqual(self.present(), sorted(NEW + OTHER))
         self.assertEqual(self.marker("ha_permission_manager"), "user")
         self.assertNotIn("removed old component: ha_permission_manager", self.log)
 
@@ -371,7 +374,7 @@ class SeedTest(unittest.TestCase):
         (self.config / ".storage").mkdir()
         (self.config / ".storage" / "core.config_entries").write_text('{"data": {"entr')
         self.run_seed()
-        self.assertEqual(self.installed(), sorted(OLD + OTHER))
+        self.assertEqual(self.present(), sorted(OLD + OTHER))
         self.assertEqual(self.marker("ha_permission_manager"), "old")
         self.assertEqual(self.log.count("could not check"), 3)
 
@@ -379,15 +382,24 @@ class SeedTest(unittest.TestCase):
         self.fake_python(fail_groups=True)
         self.install_old()
         self.run_seed()
-        self.assertEqual(self.installed(), sorted(OLD + OTHER))
+        self.assertEqual(self.present(), sorted(OLD + OTHER))
         self.assertIn("component group check failed", self.log)
+
+    def test_failing_group_check_on_a_migrated_instance_keeps_nothing(self):
+        # Only the successors (2.x permission manager) and others are present.
+        for name in NEW + OTHER:
+            component(self.cc / name, "2.0.15", marker="user")
+        self.fake_python(fail_groups=True)
+        self.run_seed()
+        self.assertEqual(self.present(), sorted(NEW + OTHER))
+        self.assertNotIn("kept the old", self.log)
 
     def test_in_use_signal_without_old_folders_seeds_the_successor(self):
         # The permission manager keeps its storage key across 1.x -> 2.x, so a
         # 2.x user also has .storage/ha_permission_manager.
         self.config_entries("ha_permission_manager", "ha_finance")
         self.run_seed()
-        self.assertEqual(self.installed(), sorted(NEW + OTHER))
+        self.assertEqual(self.present(), sorted(NEW + OTHER))
         self.assertNotIn("kept the old", self.log)
 
 

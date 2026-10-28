@@ -33,8 +33,8 @@ _Avoid_: bundle, family
 At least one of: a config entry of an old domain, a `.storage` file named after an old domain,
 a non-empty `/config/dmx`, `/config/knx` or `/config/modbus` (protocol group), or a top-level
 `configuration.yaml` key that is an old domain. Once `ha_permission_manager` 2.x is present in
-`custom_components`, the entry and `.storage` file it shares with 1.x no longer count. A group that cannot be
-checked counts as in use.
+`custom_components`, the entry and `.storage` file it shares with 1.x no longer count. A group
+that cannot be checked counts as in use.
 An unused group's old folders are replaced on boot; a group in use is left alone.
 _Avoid_: active, enabled, configured
 

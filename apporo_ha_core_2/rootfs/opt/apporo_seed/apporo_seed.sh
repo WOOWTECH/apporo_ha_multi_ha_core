@@ -20,7 +20,9 @@ mkdir -p "${CONFIG_DIR}/custom_components"
 # cannot run, or is killed, the successor of every group that still has an old folder
 # in custom_components or a folder left in .apporo_seed_removed is not seeded; the
 # script restores or replaces that group on the next boot. HA must still start.
-# COMPONENT_GROUPS repeats seed_groups.py GROUPS (name, successor, old folders) because
+# A folder named after the successor does not count: it is the successor or is kept
+# anyway, since the copy below never overwrites a present folder.
+# COMPONENT_GROUPS repeats seed_groups.py GROUPS (name, successor, old_domains) because
 # this fallback runs exactly when that script cannot; tests/test_seed.py checks they match.
 COMPONENT_GROUPS="
 permission ha_permission_manager ha_permission_manager ha_area_control ha_label_control
@@ -29,11 +31,12 @@ protocol woow_multi_protocol woow_dmx woow_knx woow_modbus
 "
 if ! skip="$("${PYTHON}" "$(dirname "$0")/seed_groups.py" "${CONFIG_DIR}")"; then
   skip=""
-  while read -r group successor old; do
+  while read -r group successor old_domains; do
     [ -n "${group}" ] || continue
     held=""
     if [ -e "${CONFIG_DIR}/.apporo_seed_removed/${group}" ]; then held=1; fi
-    for name in ${old}; do
+    for name in ${old_domains}; do
+      [ "${name}" != "${successor}" ] || continue
       if [ -e "${CONFIG_DIR}/custom_components/${name}" ]; then held=1; fi
     done
     if [ -n "${held}" ]; then

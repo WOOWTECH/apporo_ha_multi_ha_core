@@ -52,17 +52,22 @@ def log(message):
     print(f"{PREFIX} {message}", file=sys.stderr, flush=True)
 
 
+class UnreadableManifest(ValueError):
+    """A successor-domain folder whose manifest version cannot be read."""
+
+
 def is_successor(path):
     """Whether a folder of the successor's domain is the successor, not an old version.
 
     Only ha_permission_manager keeps its domain: 2.x is the successor, 1.x is old.
-    Raises when the manifest cannot be read, so the group is kept.
+    Raises UnreadableManifest when the manifest cannot be read, so the group is kept.
     """
     try:
         manifest = json.loads((path / "manifest.json").read_text(encoding="utf-8"))
         return int(str(manifest["version"]).split(".")[0]) >= 2
     except (OSError, ValueError, KeyError, TypeError) as err:
-        raise ValueError(f"cannot read the version of {path.name} ({err})") from err
+        raise UnreadableManifest(
+            f"custom_components/{path.name}/manifest.json cannot be read ({err})") from err
 
 
 def old_folders(group, custom_components):
@@ -150,8 +155,8 @@ def remove(group, old, custom_components, trash):
     """Move the group's old folders out of custom_components, then delete them.
 
     The moves are undone if one fails, and the error is raised; a move back that
-    fails too is retried by recover() on the next boot. So by the end of the next
-    boot a group is either fully removed or untouched.
+    fails too is retried by recover() on every boot until it succeeds, and the
+    group is kept meanwhile.
     """
     pending = trash / group.name
     done = trash / (group.name + DONE)
@@ -213,6 +218,9 @@ def main(config):
             continue
         try:
             replace(group, config, custom_components, trash)
+        except UnreadableManifest as err:
+            keep(group, f"check failed ({err})",
+                 f" Check or replace custom_components/{group.successor}.")
         except Exception as err:  # noqa: BLE001 - one group's error keeps only that group
             keep(group, f"check failed ({err})")
 

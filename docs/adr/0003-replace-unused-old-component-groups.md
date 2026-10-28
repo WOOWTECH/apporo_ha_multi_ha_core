@@ -34,11 +34,13 @@ replacing unused groups changes nothing a user can see.
 - A group's old folders are first moved out of `custom_components` together
   and only then deleted; if a move fails, the moves are undone. A move back
   that fails, or a boot interrupted mid-move, is undone on the next boot
-  before anything else. Until then the group stays split and its successor is
-  not seeded; by the end of the next boot it is either fully replaced or
-  untouched. A folder left in `.apporo_seed_removed` that cannot be moved back
-  (a folder of that name is in `custom_components` again) is neither restored
-  nor deleted: it keeps the group, and the log says so on every boot.
+  before anything else, so the group is normally whole again after that boot.
+  Until it is, the group stays split and its successor is not seeded. A folder
+  left in `.apporo_seed_removed` that cannot be moved back (a folder of that
+  name is in `custom_components` again, or the move keeps failing) is neither
+  restored nor deleted: the group stays split, and its successor is not
+  seeded, until someone removes the colliding folder or fixes the cause; the
+  log says so on every boot.
 - Each group is checked on its own: an error in one keeps only that group.
   If `seed_groups.py` cannot run, or is killed, `apporo_seed.sh` does not
   seed the successor of any group that still has an old folder in
