@@ -47,7 +47,10 @@ replacing unused groups changes nothing a user can see.
   `custom_components` or a folder in `.apporo_seed_removed`, and seeds the
   rest as usual (a fresh instance gets all three). So a group already
   replaced is not left without its successor, and a successor never takes
-  the place a folder must be moved back to.
+  the place a folder must be moved back to. A folder named after the
+  successor (`ha_permission_manager`) counts as old unless its manifest
+  shows version 2 or higher, as in `is_successor()`; a manifest that cannot
+  be read counts as old, so a 1.x-only permission group is kept and logged.
 - A user in use migrates by hand (2.4.0 CHANGELOG). Once they delete the old
   folders the successor is seeded on the next boot, whatever data the old
   components left behind.

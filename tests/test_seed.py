@@ -394,6 +394,28 @@ class SeedTest(unittest.TestCase):
         self.assertEqual(self.present(), sorted(NEW + OTHER))
         self.assertNotIn("kept the old", self.log)
 
+    def test_failing_group_check_keeps_an_old_permission_manager_alone(self):
+        # Only ha_permission_manager 1.x, no area/label folders and nothing moved out.
+        self.install_old(["ha_permission_manager"])
+        self.fake_python(fail_groups=True)
+        self.run_seed()
+        self.assertEqual(self.present(), sorted(NEW + OTHER))
+        self.assertEqual(self.marker("ha_permission_manager"), "old")
+        self.assertIn("kept the old permission components: component group check failed",
+                      self.log)
+        self.assertNotIn("kept the old records", self.log)
+        self.assertEqual(self.marker("woow_ha_records"), "seed")
+
+    def test_failing_group_check_keeps_an_unreadable_permission_manager(self):
+        component(self.cc / "ha_permission_manager", "2.0.15", marker="user")
+        (self.cc / "ha_permission_manager" / "manifest.json").write_text('{"version": ')
+        self.fake_python(fail_groups=True)
+        self.run_seed()
+        self.assertEqual(self.marker("ha_permission_manager"), "user")
+        self.assertIn("kept the old permission components: component group check failed",
+                      self.log)
+        self.assertEqual(self.marker("woow_ha_records"), "seed")
+
     def test_in_use_signal_without_old_folders_seeds_the_successor(self):
         # The permission manager keeps its storage key across 1.x -> 2.x, so a
         # 2.x user also has .storage/ha_permission_manager.

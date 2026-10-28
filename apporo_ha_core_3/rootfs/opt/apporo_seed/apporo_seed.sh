@@ -20,8 +20,9 @@ mkdir -p "${CONFIG_DIR}/custom_components"
 # cannot run, or is killed, the successor of every group that still has an old folder
 # in custom_components or a folder left in .apporo_seed_removed is not seeded; the
 # script restores or replaces that group on the next boot. HA must still start.
-# A folder named after the successor does not count: it is the successor or is kept
-# anyway, since the copy below never overwrites a present folder.
+# A folder named after the successor (only ha_permission_manager) counts as old unless
+# its manifest.json version is 2 or higher, as is_successor() decides; a manifest that
+# cannot be read counts as old, so the group is kept and logged.
 # COMPONENT_GROUPS repeats seed_groups.py GROUPS (name, successor, old_domains) because
 # this fallback runs exactly when that script cannot; tests/test_seed.py checks they match.
 COMPONENT_GROUPS="
@@ -36,8 +37,14 @@ if ! skip="$("${PYTHON}" "$(dirname "$0")/seed_groups.py" "${CONFIG_DIR}")"; the
     held=""
     if [ -e "${CONFIG_DIR}/.apporo_seed_removed/${group}" ]; then held=1; fi
     for name in ${old_domains}; do
-      [ "${name}" != "${successor}" ] || continue
-      if [ -e "${CONFIG_DIR}/custom_components/${name}" ]; then held=1; fi
+      [ -e "${CONFIG_DIR}/custom_components/${name}" ] || continue
+      if [ "${name}" = "${successor}" ]; then
+        major="$(sed -n 's/^.*"version"[[:space:]]*:[[:space:]]*"\{0,1\}\([0-9][0-9]*\).*$/\1/p' \
+          "${CONFIG_DIR}/custom_components/${name}/manifest.json" 2>/dev/null)" || major=""
+        major="${major%%[!0-9]*}"
+        if [ -n "${major}" ] && [ "${major}" -ge 2 ]; then continue; fi
+      fi
+      held=1
     done
     if [ -n "${held}" ]; then
       echo "[apporo_seed] kept the old ${group} components: component group check failed; ${successor} not seeded."
