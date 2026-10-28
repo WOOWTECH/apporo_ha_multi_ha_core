@@ -97,6 +97,7 @@ class SeedTest(unittest.TestCase):
             + f'exec "{real}" "$@"\n',
             newline="\n",
         )
+        self.python.chmod(0o755)  # Linux needs the execute bit; Windows ignores it
 
     # --- arrange helpers -------------------------------------------------
 
