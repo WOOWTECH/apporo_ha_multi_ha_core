@@ -18,8 +18,9 @@ _Avoid_: install, provision, bootstrap
 
 **Seed-if-missing**:
 The rule that a component is only copied when its target folder is absent, so existing folders
-and user edits or removals are never overwritten. The one exception is an unused old
-**component group** (ADR 0003).
+and user edits or removals are never overwritten. There are two exceptions: an unused old
+**component group** (ADR 0003), and a `hacs` folder without `hacs_frontend/`, which cannot
+load and so cannot be in use (ADR 0004).
 _Avoid_: sync, overwrite, upgrade
 
 **Component group**:
