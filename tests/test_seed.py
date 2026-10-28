@@ -9,6 +9,7 @@ Run from the repository root:  python -m unittest discover -s tests
 
 import json
 import os
+import re
 import shutil
 import subprocess
 import sys
@@ -19,6 +20,26 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent
 SCRIPT = ROOT / "_seed" / "apporo_seed.sh"
 SH = shutil.which("sh") or shutil.which("bash")
+sys.path.insert(0, str(ROOT / "_seed"))
+import seed_groups  # noqa: E402
+
+# Runs seed_groups.py with os.rename failing for the folders named in
+# APPORO_TEST_FAIL: "<name>>out" fails moving it out of custom_components,
+# "<name>>in" fails moving it back in.
+FAULT_SHIM = """
+import os, runpy, sys
+from pathlib import Path
+faults = set(os.environ["APPORO_TEST_FAIL"].split(","))
+real_rename = os.rename
+def rename(src, dst):
+    way = "in" if Path(dst).parent.name == "custom_components" else "out"
+    if f"{Path(src).name}>{way}" in faults:
+        raise OSError(f"injected failure moving {Path(src).name} {way}")
+    return real_rename(src, dst)
+os.rename = rename
+sys.argv = sys.argv[1:]
+runpy.run_path(sys.argv[0], run_name="__main__")
+"""
 
 NEW = ["ha_permission_manager", "woow_ha_records", "woow_multi_protocol"]
 OTHER = ["hacs", "localtuya"]
@@ -55,16 +76,22 @@ class SeedTest(unittest.TestCase):
             component(self.seed / "custom_components" / name, "1.0.0")
         self.config.mkdir()
         self.python = tmp / "python"
+        self.shim = tmp / "fault_shim.py"
+        self.shim.write_text(FAULT_SHIM)
+        self.faults = ""
         self.fake_python()
 
     def fake_python(self, fail_groups=False):
         real = Path(sys.executable).as_posix()
         groups = 'case "$1" in *seed_groups.py) exit 3;; esac\n' if fail_groups else ""
+        shim = self.shim.as_posix()
         self.python.write_text(
             "#!/bin/sh\n"
             'if [ "$1" = "-m" ] && [ "$2" = "homeassistant" ]; then\n'
             '  echo "[test] homeassistant started"; exit 0\n'
-            "fi\n" + groups + f'exec "{real}" "$@"\n',
+            "fi\n" + groups
+            + f'if [ -n "${{APPORO_TEST_FAIL:-}}" ]; then exec "{real}" "{shim}" "$@"; fi\n'
+            + f'exec "{real}" "$@"\n',
             newline="\n",
         )
 
@@ -89,7 +116,8 @@ class SeedTest(unittest.TestCase):
         env = dict(os.environ,
                    APPORO_SEED_DIR=self.seed.as_posix(),
                    APPORO_SEED_CONFIG_DIR=self.config.as_posix(),
-                   APPORO_SEED_PYTHON=self.python.as_posix())
+                   APPORO_SEED_PYTHON=self.python.as_posix(),
+                   APPORO_TEST_FAIL=self.faults)
         result = subprocess.run([SH, SCRIPT.as_posix()], env=env, capture_output=True, encoding="utf-8", errors="replace",
                                 timeout=60)
         self.log = result.stdout + result.stderr
@@ -181,6 +209,58 @@ class SeedTest(unittest.TestCase):
         self.run_seed()
         self.assertEqual(self.installed(), sorted(NEW + OTHER))
         self.assertIn("removed old component: ha_label_control", self.log)
+
+    def test_old_permission_manager_signals_count_without_the_successor(self):
+        # No permission manager folder at all: its 1.x entry still means in use.
+        self.install_old(["ha_area_control", "ha_label_control"])
+        self.config_entries("ha_permission_manager")
+        self.run_seed()
+        self.assertEqual(self.installed(),
+                         sorted(OTHER + ["ha_area_control", "ha_label_control",
+                                         "woow_ha_records", "woow_multi_protocol"]))
+        self.assertIn("kept the old permission components: in use "
+                      "(config entry ha_permission_manager", self.log)
+
+    def test_configuration_yaml_key_variants(self):
+        variants = {"spaces before colon": "ha_finance :\n",
+                    "byte order mark": "﻿ha_finance:\n",
+                    "double quoted": '"ha_finance": {}\n',
+                    "single quoted": "'ha_finance': {}\n"}
+        for label, text in variants.items():
+            with self.subTest(label):
+                self.reset_config()
+                self.install_old()
+                (self.config / "configuration.yaml").write_text(text, encoding="utf-8")
+                self.run_seed()
+                self.assert_only_group_kept("records", "configuration.yaml key ha_finance")
+        with self.subTest("indented key is not top level"):
+            self.reset_config()
+            self.install_old()
+            (self.config / "configuration.yaml").write_text("homeassistant:\n  ha_finance:\n")
+            self.run_seed()
+            self.assertEqual(self.installed(), sorted(NEW + OTHER))
+
+    def test_failed_undo_keeps_the_group_and_other_groups_are_still_seeded(self):
+        self.install_old()
+        # ha_finance moves out, ha_asset_record fails, moving ha_finance back fails.
+        self.faults = "ha_asset_record>out,ha_finance>in"
+        self.run_seed()
+        installed = self.installed()
+        self.assertEqual(self.marker("ha_permission_manager"), "seed")
+        self.assertIn("woow_multi_protocol", installed)
+        self.assertNotIn("woow_ha_records", installed)
+        self.assertNotIn("ha_finance", installed)
+        # Next start: ha_finance comes back before anything else happens.
+        self.faults = "ha_finance>out"
+        self.run_seed()
+        installed = self.installed()
+        for name in GROUP_OLD["records"]:
+            self.assertEqual(self.marker(name), "old")
+        self.assertNotIn("woow_ha_records", installed)
+
+    def test_shell_fallback_lists_the_same_successors(self):
+        line = re.search(r'^SUCCESSORS="([^"]*)"', SCRIPT.read_text(encoding="utf-8"), re.M).group(1)
+        self.assertEqual(line.split(), [g.successor for g in seed_groups.GROUPS])
 
     def test_failing_group_check_on_a_fresh_install_still_seeds_the_successors(self):
         self.fake_python(fail_groups=True)

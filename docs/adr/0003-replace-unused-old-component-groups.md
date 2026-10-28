@@ -30,10 +30,12 @@ replacing unused groups changes nothing a user can see.
 - A missing `core.config_entries` means Home Assistant never ran with the old
   components, so it does not count as in use.
 - A group's old folders are first moved out of `custom_components` together
-  and only then deleted; if a move fails, the moves are undone. A group is
-  either fully replaced or untouched.
-- If the check fails outright, an instance that already has components keeps
-  every group; a fresh instance is seeded as usual.
+  and only then deleted; if a move fails, the moves are undone. A move back
+  that fails, or a boot interrupted mid-move, is undone on the next boot
+  before anything else. A group is either fully replaced or untouched.
+- Each group is checked on its own: an error in one keeps only that group.
+  If `seed_groups.py` cannot run at all, an instance that already has
+  components keeps every group; a fresh instance is seeded as usual.
 - A user in use migrates by hand (2.4.0 CHANGELOG). Once they delete the old
   folders the successor is seeded on the next boot, whatever data the old
   components left behind.

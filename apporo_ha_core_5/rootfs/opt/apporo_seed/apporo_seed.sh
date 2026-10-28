@@ -15,9 +15,12 @@ mkdir -p "${CONFIG_DIR}/custom_components"
 
 # One exception to seed-if-missing: an old split component group that is installed
 # but not in use is removed, so its consolidated successor gets seeded below.
-# seed_groups.py prints the successors to skip (groups in use). If the check itself
-# fails on an instance that already has components, every group is kept and no
-# successor is seeded; a fresh instance is seeded as usual. HA must still start.
+# seed_groups.py prints the successors to skip (groups in use, or whose check failed);
+# it handles each group on its own and does not fail because of one. If the script
+# cannot run at all on an instance that already has components, no group was touched,
+# so no successor is seeded; a fresh instance is seeded as usual. HA must still start.
+# SUCCESSORS repeats the successors in seed_groups.py GROUPS because this fallback
+# runs exactly when that script cannot; tests/test_seed.py checks they match.
 SUCCESSORS="ha_permission_manager woow_ha_records woow_multi_protocol"
 if ! skip="$("${PYTHON}" "$(dirname "$0")/seed_groups.py" "${CONFIG_DIR}")"; then
   skip=""
