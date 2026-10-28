@@ -3,9 +3,9 @@ name: CI
 # Required check for the default branch (WOOW addon pipeline #88). The App
 # Store ships this repository's default branch head (registry ref_policy:
 # main) only after this workflow succeeded on that commit, so it runs on
-# every push to main, docs-only included, and on every pull request. It
-# validates each add-on and builds its amd64 image the way a Home Assistant
-# host builds it locally.
+# every push to main, docs-only included, and on every pull request. It runs
+# the seed entrypoint tests, validates each add-on and builds its amd64 image
+# the way a Home Assistant host builds it locally.
 
 on:
   push:
@@ -43,6 +43,12 @@ jobs:
           yq -e '.arch[] | select(. == "amd64")' "${ADDON}/config.yaml" >/dev/null || { echo "::error::${ADDON} does not support amd64"; exit 1; }
           echo "version=$(yq -r '.version' "${ADDON}/config.yaml")" >> "$GITHUB_OUTPUT"
           echo "base=$(yq -r '.build_from.amd64 // ""' "${ADDON}/build.yaml")" >> "$GITHUB_OUTPUT"
+
+      # The seed tests run in every matrix leg (a few seconds each) because
+      # the ruleset requires exactly these job names; a separate job would
+      # not gate merges without a ruleset change.
+      - name: Test the seed entrypoint
+        run: python3 -m unittest discover -s tests -v
 
       - name: Build the amd64 image
         env:
