@@ -25,7 +25,8 @@ import seed_groups  # noqa: E402
 
 # Runs seed_groups.py with os.rename failing for the folders named in
 # APPORO_TEST_FAIL: "<name>>out" fails moving it out of custom_components,
-# "<name>>in" fails moving it back in.
+# "<name>>in" fails moving it back in, and "<name>>out>kill" kills the script
+# instead of that move ("<group>>out>kill" stops before the group is marked .done).
 FAULT_SHIM = """
 import os, runpy, sys
 from pathlib import Path
@@ -33,6 +34,8 @@ faults = set(os.environ["APPORO_TEST_FAIL"].split(","))
 real_rename = os.rename
 def rename(src, dst):
     way = "in" if Path(dst).parent.name == "custom_components" else "out"
+    if f"{Path(src).name}>{way}>kill" in faults:
+        os._exit(137)
     if f"{Path(src).name}>{way}" in faults:
         raise OSError(f"injected failure moving {Path(src).name} {way}")
     return real_rename(src, dst)
@@ -258,9 +261,85 @@ class SeedTest(unittest.TestCase):
             self.assertEqual(self.marker(name), "old")
         self.assertNotIn("woow_ha_records", installed)
 
-    def test_shell_fallback_lists_the_same_successors(self):
-        line = re.search(r'^SUCCESSORS="([^"]*)"', SCRIPT.read_text(encoding="utf-8"), re.M).group(1)
-        self.assertEqual(line.split(), [g.successor for g in seed_groups.GROUPS])
+    def test_shell_fallback_lists_the_same_groups(self):
+        table = re.search(r'^COMPONENT_GROUPS="([^"]*)"', SCRIPT.read_text(encoding="utf-8"), re.M).group(1)
+        rows = [line.split() for line in table.strip().splitlines()]
+        self.assertEqual(rows, [[g.name, g.successor, *g.old_domains] for g in seed_groups.GROUPS])
+
+    def test_killed_check_with_one_group_moved_out_does_not_seed_its_successor(self):
+        # Only the permission group is present; the script dies with its folders in the trash.
+        self.install_old(GROUP_OLD["permission"])
+        self.faults = "permission>out>kill"
+        self.run_seed()
+        self.assertEqual(self.installed(),
+                         sorted(OTHER + ["woow_ha_records", "woow_multi_protocol"]))
+        # Next start: the folders come back and the unused group is replaced.
+        self.faults = ""
+        self.run_seed()
+        self.assertEqual(self.installed(), sorted(NEW + OTHER))
+        self.assertEqual(self.marker("ha_permission_manager"), "seed")
+        self.assertNotIn("kept the old", self.log)
+        self.assertEqual(list((self.config / seed_groups.TRASH).iterdir()), [])
+
+    def test_killed_check_seeds_the_successor_of_a_group_already_replaced(self):
+        # Permission is replaced, then the script dies moving the records group out.
+        self.install_old(GROUP_OLD["permission"] + GROUP_OLD["records"])
+        self.faults = "ha_finance>out>kill"
+        self.run_seed()
+        self.assertEqual(self.installed(),
+                         sorted(OTHER + GROUP_OLD["records"]
+                                + ["ha_permission_manager", "woow_multi_protocol"]))
+        self.assertEqual(self.marker("ha_permission_manager"), "seed")
+        self.assertIn("kept the old records components", self.log)
+        self.faults = ""
+        self.run_seed()
+        self.assertEqual(self.installed(), sorted(NEW + OTHER))
+
+    def trash(self, folder, names):
+        for name in names:
+            component(self.config / seed_groups.TRASH / folder / name, "2.1.1", marker="old")
+
+    def test_leftover_done_folder_is_deleted_and_the_successor_seeded(self):
+        self.trash("records.done", ["ha_finance", "ha_asset_record"])
+        self.run_seed()
+        self.assertEqual(self.installed(), sorted(NEW + OTHER))
+        self.assertEqual(list((self.config / seed_groups.TRASH).iterdir()), [])
+
+    def test_pending_folder_is_restored_then_the_group_is_judged(self):
+        for label, entries, expected in (
+                ("not in use", (), sorted(NEW + OTHER)),
+                ("in use", ("ha_finance",),
+                 sorted(OTHER + GROUP_OLD["records"]
+                        + ["ha_permission_manager", "woow_multi_protocol"]))):
+            with self.subTest(label):
+                self.reset_config()
+                self.trash("records", ["ha_finance", "ha_asset_record"])
+                self.install_old(["ha_health_record", "ha_note_record"])
+                self.config_entries(*entries)
+                self.run_seed()
+                self.assertIn("restored ha_finance after an interrupted removal", self.log)
+                self.assertEqual(self.installed(), expected)
+                self.assertEqual(list((self.config / seed_groups.TRASH).iterdir()), [])
+
+    def test_restore_name_collision_keeps_the_group(self):
+        self.trash("records", ["ha_finance"])
+        component(self.cc / "ha_finance", "2.1.1", marker="user")
+        self.run_seed()
+        self.assertEqual(self.marker("ha_finance"), "user")
+        self.assertNotIn("woow_ha_records", self.installed())
+        self.assertTrue((self.config / seed_groups.TRASH / "records" / "ha_finance").is_dir())
+        self.assertIn("could not restore ha_finance", self.log)
+        self.assertIn("kept the old records components", self.log)
+
+    def test_unreadable_permission_manager_manifest_keeps_the_group(self):
+        component(self.cc / "ha_permission_manager", "2.0.15", marker="user")
+        (self.cc / "ha_permission_manager" / "manifest.json").write_text('{"version": ')
+        self.install_old(["ha_area_control"])
+        self.run_seed()
+        self.assertEqual(self.marker("ha_permission_manager"), "user")
+        self.assertIn("ha_area_control", self.installed())
+        self.assertIn("kept the old permission components", self.log)
+        self.assertEqual(self.marker("woow_ha_records"), "seed")
 
     def test_failing_group_check_on_a_fresh_install_still_seeds_the_successors(self):
         self.fake_python(fail_groups=True)

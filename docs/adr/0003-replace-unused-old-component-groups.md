@@ -25,17 +25,27 @@ replacing unused groups changes nothing a user can see.
   `core.config_entries`, a failing check) counts as in use.
 - `ha_permission_manager` keeps its domain, so a 2.x folder counts as the
   successor and is never deleted or overwritten; only a 1.x folder is old.
-  Once the successor is installed, the entry and storage key it shares with
-  1.x no longer count as the group being in use.
+  Once the successor is present in `custom_components`, the entry and storage
+  key it shares with 1.x no longer count as the group being in use. A
+  `ha_permission_manager` folder whose manifest version cannot be read counts
+  as in use.
 - A missing `core.config_entries` means Home Assistant never ran with the old
   components, so it does not count as in use.
 - A group's old folders are first moved out of `custom_components` together
   and only then deleted; if a move fails, the moves are undone. A move back
   that fails, or a boot interrupted mid-move, is undone on the next boot
-  before anything else. A group is either fully replaced or untouched.
+  before anything else. Until then the group stays split and its successor is
+  not seeded; by the end of the next boot it is either fully replaced or
+  untouched. A folder left in `.apporo_seed_removed` that cannot be moved back
+  (a folder of that name is in `custom_components` again) is neither restored
+  nor deleted: it keeps the group, and the log says so on every boot.
 - Each group is checked on its own: an error in one keeps only that group.
-  If `seed_groups.py` cannot run at all, an instance that already has
-  components keeps every group; a fresh instance is seeded as usual.
+  If `seed_groups.py` cannot run, or is killed, `apporo_seed.sh` does not
+  seed the successor of any group that still has an old folder in
+  `custom_components` or a folder in `.apporo_seed_removed`, and seeds the
+  rest as usual (a fresh instance gets all three). So a group already
+  replaced is not left without its successor, and a successor never takes
+  the place a folder must be moved back to.
 - A user in use migrates by hand (2.4.0 CHANGELOG). Once they delete the old
   folders the successor is seeded on the next boot, whatever data the old
   components left behind.

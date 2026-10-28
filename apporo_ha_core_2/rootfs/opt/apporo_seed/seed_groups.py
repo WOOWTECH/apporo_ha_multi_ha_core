@@ -6,7 +6,7 @@ whose old folders are present in /config/custom_components:
 - not in use: delete the group's old folders, so the copy that follows seeds the
   successor;
 - in use (or the check could not be made): leave the group alone and print the
-  successor's name on stdout, so the copy skips it.
+  successor's name on stdout, so the copy skips it (keep()).
 
 Each group is handled on its own: an error in one keeps only that group.
 
@@ -56,12 +56,13 @@ def is_successor(path):
     """Whether a folder of the successor's domain is the successor, not an old version.
 
     Only ha_permission_manager keeps its domain: 2.x is the successor, 1.x is old.
+    Raises when the manifest cannot be read, so the group is kept.
     """
     try:
         manifest = json.loads((path / "manifest.json").read_text(encoding="utf-8"))
         return int(str(manifest["version"]).split(".")[0]) >= 2
-    except (OSError, ValueError, KeyError, TypeError):
-        return False
+    except (OSError, ValueError, KeyError, TypeError) as err:
+        raise ValueError(f"cannot read the version of {path.name} ({err})") from err
 
 
 def old_folders(group, custom_components):
@@ -108,7 +109,13 @@ def in_use(group, config, domains):
     return None
 
 
-def recover(trash, custom_components):
+def keep(group, reason, hint=""):
+    """Log why the group is kept and print its successor, so the copy skips it."""
+    log(f"kept the old {group.name} components: {reason}; {group.successor} not seeded.{hint}")
+    print(group.successor, flush=True)
+
+
+def recover(custom_components, trash):
     """Finish what an interrupted boot left in the trash. Returns the groups not restored.
 
     <group>.done holds a group whose folders were all moved out: it is deleted.
@@ -139,12 +146,12 @@ def recover(trash, custom_components):
     return stuck
 
 
-def remove(group, names, custom_components, trash):
-    """Move the folders out of custom_components, then delete them.
+def remove(group, old, custom_components, trash):
+    """Move the group's old folders out of custom_components, then delete them.
 
-    The moves are undone if one fails; a move back that fails too is retried by
-    recover() on the next boot. So a group is either fully removed or untouched.
-    Returns whether it was removed.
+    The moves are undone if one fails, and the error is raised; a move back that
+    fails too is retried by recover() on the next boot. So by the end of the next
+    boot a group is either fully removed or untouched.
     """
     pending = trash / group.name
     done = trash / (group.name + DONE)
@@ -152,28 +159,26 @@ def remove(group, names, custom_components, trash):
     pending.mkdir(parents=True, exist_ok=True)
     moved = []
     try:
-        for name in names:
+        for name in old:
             (custom_components / name).rename(pending / name)
             moved.append(name)
         pending.rename(done)
-    except OSError as err:
-        log(f"could not remove the old {group.name} components ({err}); kept the group")
+    except OSError:
         for name in reversed(moved):
             try:
                 (pending / name).rename(custom_components / name)
             except OSError as undo_err:
                 log(f"could not move {name} back ({undo_err}); retried on the next start")
-        return False
+        raise
     shutil.rmtree(done, ignore_errors=True)
-    return True
 
 
 def replace(group, config, custom_components, trash):
-    """Remove the group's old folders if it is not in use. Returns whether to skip the successor."""
-    present = old_folders(group, custom_components)
-    if not present:
-        return False
-    # Signals of the successor's own domain belong to the successor once it is installed.
+    """Remove the group's old folders if it is not in use; otherwise keep() it."""
+    old = old_folders(group, custom_components)
+    if not old:
+        return
+    # Signals of the successor's own domain belong to the successor once it is present.
     domains = group.old_domains
     successor = custom_components / group.successor
     if group.successor in domains and successor.is_dir() and is_successor(successor):
@@ -183,38 +188,33 @@ def replace(group, config, custom_components, trash):
     except Exception as err:  # noqa: BLE001 - any doubt keeps the group
         reason = f"could not check ({err})"
     if reason:
-        log(f"kept the old {group.name} components: in use ({reason}); "
-            f"{group.successor} not seeded. Migrate by hand, see CHANGELOG 2.4.0.")
-        return True
-    if not remove(group, present, custom_components, trash):
-        return True
-    for name in present:
+        keep(group, f"in use ({reason})", " Migrate by hand, see CHANGELOG 2.4.0.")
+        return
+    try:
+        remove(group, old, custom_components, trash)
+    except OSError as err:
+        keep(group, f"could not remove them ({err})")
+        return
+    for name in old:
         log(f"removed old component: {name} ({group.name} group not in use)")
-    return False
 
 
 def main(config):
     custom_components = config / "custom_components"
     trash = config / TRASH
     try:
-        stuck = recover(trash, custom_components)
+        stuck = recover(custom_components, trash)
     except Exception as err:  # noqa: BLE001 - any doubt keeps the group
         log(f"could not recover {TRASH} ({err})")
         stuck = {group.name for group in GROUPS}
     for group in GROUPS:
         if group.name in stuck:
-            log(f"kept the old {group.name} components: an interrupted removal could not "
-                f"be undone; {group.successor} not seeded.")
-            print(group.successor, flush=True)
+            keep(group, "an interrupted removal could not be undone")
             continue
         try:
-            skip = replace(group, config, custom_components, trash)
+            replace(group, config, custom_components, trash)
         except Exception as err:  # noqa: BLE001 - one group's error keeps only that group
-            log(f"kept the old {group.name} components: check failed ({err}); "
-                f"{group.successor} not seeded.")
-            skip = True
-        if skip:
-            print(group.successor, flush=True)
+            keep(group, f"check failed ({err})")
 
 
 if __name__ == "__main__":
