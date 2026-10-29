@@ -10,5 +10,6 @@ foreach ($n in 1..5) {
     New-Item -ItemType Directory -Force -Path $dest | Out-Null
     Copy-Item -Recurse -Force (Join-Path $seed "custom_components") (Join-Path $dest "custom_components")
     Copy-Item -Force (Join-Path $seed "apporo_seed.sh") (Join-Path $dest "apporo_seed.sh")
+    Copy-Item -Force (Join-Path $seed "seed_groups.py") (Join-Path $dest "seed_groups.py")
     Write-Host "synced -> apporo_ha_core_$n\rootfs\opt\apporo_seed"
 }
