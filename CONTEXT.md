@@ -18,9 +18,10 @@ _Avoid_: install, provision, bootstrap
 
 **Seed-if-missing**:
 The rule that a component is only copied when its target folder is absent, so existing folders
-and user edits or removals are never overwritten. There are two exceptions: an unused old
+and user edits or removals are never overwritten. There are three exceptions: an unused old
 **component group** (ADR 0003), and a `hacs` folder without `hacs_frontend/`, which cannot
-load and so cannot be in use (ADR 0004).
+load and so cannot be in use (ADR 0004), and a `woow_zha_quirks` 1.x before 1.4 that is not
+**in use** (ADR 0005). `nodered`, `pyscript` and every other component follow the rule.
 _Avoid_: sync, overwrite, upgrade
 
 **Component group**:
@@ -30,13 +31,16 @@ Old split components that upstream consolidated into one successor: permission
 `woow_ha_records`), protocol (`woow_dmx`, `woow_knx`, `woow_modbus` → `woow_multi_protocol`).
 _Avoid_: bundle, family
 
-**In use** (of a component group):
-At least one of: a config entry of an old domain, a `.storage` file named after an old domain,
+**In use** (of a component group or a single component):
+Of a single component (only `woow_zha_quirks`): a config entry of its domain, or a top-level
+`configuration.yaml` key that is its domain.
+Of a component group, at least one of: a config entry of an old domain, a `.storage` file named after an old domain,
 a non-empty `/config/dmx`, `/config/knx` or `/config/modbus` (protocol group), or a top-level
 `configuration.yaml` key that is an old domain. Once `ha_permission_manager` 2.x is present in
 `custom_components`, the entry and `.storage` file it shares with 1.x no longer count. A group
-that cannot be checked counts as in use.
-An unused group's old folders are replaced on boot; a group in use is left alone.
+or component that cannot be checked counts as in use.
+An unused group's old folders, or an unused `woow_zha_quirks` before 1.4, are replaced on boot;
+one in use is left alone.
 _Avoid_: active, enabled, configured
 
 **Canonical seed** (`_seed/`):
