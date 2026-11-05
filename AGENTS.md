@@ -18,14 +18,15 @@ release mechanism is described in the Woow_HA_App_Store README (section
    addon whose version changes: the Store rebuilds it for amd64 at the commit
    on the PR base where its current version first appeared and at the PR,
    starts the old one under a mock Supervisor, then the new one on the same
-   data, and fails when either does not start. Without hooks it checks
-   startup only, not data. To check data, add hooks in
-   `apporo_ha_core_N/upgrade-check/`: `seed` writes data on the old version,
+   data, and fails when either does not start. Without a `verify` hook it
+   checks startup only, not data. To check data, add hooks in
+   `apporo_ha_core_N/upgrade-check/` (for example
+   `apporo_ha_core_1/upgrade-check/`): `seed` writes data on the old version,
    `verify` checks it on this PR's version. Their interface (environment, JSON
    report) is in the Woow_HA_App_Store README, "第 2 類 升級測試", paragraph
    "資料檢查（#138）". Keep the hooks executable
    (`git update-index --chmod=+x`), with LF endings and a `#!` of python3 or
-   busybox sh only: they run in the Store's python:3.12-alpine mock
+   busybox sh only (no bash): they run in the Store's python:3.12-alpine mock
    Supervisor container, so never `docker run` from them. A hook must not
    leave background processes running when it exits, and a hook file must not
    be a symlink to anything outside `upgrade-check/` (only that directory is
