@@ -14,7 +14,12 @@ release mechanism is described in the Woow_HA_App_Store README (section
    It compares each addon whose version the PR changes with the version on the
    PR base: the Store ships this repository's `main`, which has no Stable
    Release. A PR that changes no version passes it in seconds. The result is
-   in the job summary.
+   in the job summary. It also runs the upgrade test (pipeline #144) for each
+   addon whose version changes: the Store rebuilds it for amd64 at the commit
+   on the PR base where its current version first appeared and at the PR,
+   starts the old one under a mock Supervisor, then the new one on the same
+   data, and fails when either does not start. Startup only: data is not
+   checked yet.
 3. **Breaking changes must be declared in `upgrade-notes.yaml`** next to each
    addon's `config.yaml` (for example `apporo_ha_core_1/upgrade-notes.yaml`).
    Create the file only when the upgrade comparison asks for it; copy `change`
