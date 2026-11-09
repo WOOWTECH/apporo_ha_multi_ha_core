@@ -1,11 +1,13 @@
 name: CI
 
 # Required check for the default branch (WOOW addon pipeline #88). The App
-# Store ships this repository's default branch head (registry ref_policy:
-# main) only after this workflow succeeded on that commit, so it runs on
-# every push to main, docs-only included, and on every pull request. It runs
-# the seed entrypoint tests, validates each add-on and builds its amd64 image
-# the way a Home Assistant host builds it locally.
+# Store ships only published Releases of this repository (registry
+# ref_policy: release, pipeline #134). Every push to main and every pull
+# request runs the seed entrypoint tests, validates each add-on and builds its
+# amd64 image the way a Home Assistant host builds it locally; when that
+# passes on main, the Store's shared workflow publishes, for each add-on whose
+# config.yaml version has none yet, its Release apporo_ha_core_N-v<version>.
+# A version that is already released is left alone.
 
 on:
   push:
@@ -67,12 +69,20 @@ jobs:
           fi
           docker build "${args[@]}" -t "local/${ADDON}:${VERSION}" "${ADDON}"
 
+  release:
+    name: Release
+    needs: validate
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    permissions:
+      contents: write
+    uses: WOOWTECH/Woow_HA_App_Store/.github/workflows/woow-addon-release.yml@main
+
   # Upgrade comparison (WOOW addon pipeline #89): a PR that changes an addon
   # version is compared with the version users run now; undeclared breaking
   # configuration changes block it (see AGENTS.md item 3). These addons are
   # built on the device: the upgrade test (#144) rebuilds, for amd64 inside
-  # the Store workflow, each changed addon at the commit on the PR base where
-  # its version first appeared and at this PR, so no image_artifact is passed.
+  # the Store workflow, each changed addon at its latest stable Release and at
+  # this PR, so no image_artifact is passed.
   # The vulnerability comparison (category 4, pipeline #146) runs on those
   # rebuilt images, so there is no SBOM to hand over. No needs: and no path
   # filter, so a PR that changes no version passes in seconds; on push it
