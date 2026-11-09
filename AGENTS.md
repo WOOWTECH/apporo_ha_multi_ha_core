@@ -11,12 +11,11 @@ release mechanism is described in the Woow_HA_App_Store README (section
    that version to the WOOW App Store. It must pass every required check; the
    checks are the approval, there is no human review step. Every PR runs
    `Upgrade comparison / compare` (pipeline #89); treat a failure as blocking.
-   It compares each addon whose version the PR changes with the version on the
-   PR base: the Store ships this repository's `main`, which has no Stable
-   Release. A PR that changes no version passes it in seconds. The result is
-   in the job summary. It also runs the upgrade test (pipeline #144) for each
-   addon whose version changes: the Store rebuilds it for amd64 at the commit
-   on the PR base where its current version first appeared and at the PR,
+   It compares each addon whose version the PR changes with its latest Stable
+   Release (tag `apporo_ha_core_N-v<version>`). A PR that changes no version
+   passes it in seconds. The result is in the job summary. It also runs the
+   upgrade test (pipeline #144) for each addon whose version changes: the
+   Store rebuilds it for amd64 at its latest Stable Release and at the PR,
    starts the old one under a mock Supervisor, then the new one on the same
    data, and fails when either does not start. Without a `verify` hook it
    checks startup only, not data. To check data, add hooks in
