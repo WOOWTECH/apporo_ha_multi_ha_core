@@ -7,11 +7,11 @@
       "name": "Apporo HA Core 1",
       "version": "2.4.3",
       "repository": "WOOWTECH/apporo_ha_multi_ha_core",
-      "source_sha": "2e210e1f75f543e691b3f0aa16220577d819fa0d",
+      "source_sha": "9e87fe881bb31a37ab95d95227f628c87a7076bc",
       "source_path": "apporo_ha_core_1",
       "config_file": "config.yaml",
       "config_sha256": "sha256:2443d4e97d1172affcc817644a2892b20c25dd5274d9bc519ef39e18fda6db89",
-      "archive_sha256": "sha256:e6b7f73429558dc025431b7e43f08c03595841e08f31dc024f327f229424f54e",
+      "archive_sha256": "sha256:1e0ee5d6b9d81ab29656a77a60ae4ad00d46264d2fe14f46916cc30e2c9dec40",
       "context_fingerprint": "sha256:f21be7e5ccce61a65b1e59f4bda74150e9a1f6debf93344a01bedfd119176bba",
       "material_fingerprint": "sha256:170319727417876ad706f3a76e3ddfeecb5e4dffdd3586b655c151dc7d1f3090",
       "architectures": [
@@ -46,7 +46,7 @@
       "images": {},
       "delivery": "local-source-build",
       "validation": "manifest+source-context+configured-CI (runtime build not certified)",
-      "publisher_run_id": "40825432335",
+      "publisher_run_id": "42760902931",
       "channel": "stable"
     },
     "apporo_ha_core_2": {
@@ -54,11 +54,11 @@
       "name": "Apporo HA Core 2",
       "version": "2.4.3",
       "repository": "WOOWTECH/apporo_ha_multi_ha_core",
-      "source_sha": "2e210e1f75f543e691b3f0aa16220577d819fa0d",
+      "source_sha": "9e87fe881bb31a37ab95d95227f628c87a7076bc",
       "source_path": "apporo_ha_core_2",
       "config_file": "config.yaml",
       "config_sha256": "sha256:d40f451de49b1dac7a5e10adf834a3dd10b545ddee0e387c4b759166f91eafe5",
-      "archive_sha256": "sha256:e6b7f73429558dc025431b7e43f08c03595841e08f31dc024f327f229424f54e",
+      "archive_sha256": "sha256:1e0ee5d6b9d81ab29656a77a60ae4ad00d46264d2fe14f46916cc30e2c9dec40",
       "context_fingerprint": "sha256:019c7d1b2383eea955160c212aa16b3936055e2853c974418e324d77c9fe4145",
       "material_fingerprint": "sha256:a92a09e8e4f22c901864f1c2440ff6f0d03f7679872b74599071bf9c656f7666",
       "architectures": [
@@ -93,7 +93,7 @@
       "images": {},
       "delivery": "local-source-build",
       "validation": "manifest+source-context+configured-CI (runtime build not certified)",
-      "publisher_run_id": "40825432335",
+      "publisher_run_id": "42760902931",
       "channel": "stable"
     },
     "apporo_ha_core_3": {
@@ -101,11 +101,11 @@
       "name": "Apporo HA Core 3",
       "version": "2.4.3",
       "repository": "WOOWTECH/apporo_ha_multi_ha_core",
-      "source_sha": "2e210e1f75f543e691b3f0aa16220577d819fa0d",
+      "source_sha": "9e87fe881bb31a37ab95d95227f628c87a7076bc",
       "source_path": "apporo_ha_core_3",
       "config_file": "config.yaml",
       "config_sha256": "sha256:179120f6d44190e27f5c7a6e0d91e04ee35d72d21ebe9047a10677e51c60b04e",
-      "archive_sha256": "sha256:e6b7f73429558dc025431b7e43f08c03595841e08f31dc024f327f229424f54e",
+      "archive_sha256": "sha256:1e0ee5d6b9d81ab29656a77a60ae4ad00d46264d2fe14f46916cc30e2c9dec40",
       "context_fingerprint": "sha256:ec47be5be099199275cb8e24c45061a276fdb8efeafd93ca8683daf273c96905",
       "material_fingerprint": "sha256:5fe0616d54c790974aea5adf0e0629601f0ad1c9d6d20b4a198c098fadb1ded8",
       "architectures": [
@@ -140,7 +140,7 @@
       "images": {},
       "delivery": "local-source-build",
       "validation": "manifest+source-context+configured-CI (runtime build not certified)",
-      "publisher_run_id": "40825432335",
+      "publisher_run_id": "42760902931",
       "channel": "stable"
     },
     "apporo_ha_core_4": {
@@ -148,11 +148,11 @@
       "name": "Apporo HA Core 4",
       "version": "2.4.3",
       "repository": "WOOWTECH/apporo_ha_multi_ha_core",
-      "source_sha": "2e210e1f75f543e691b3f0aa16220577d819fa0d",
+      "source_sha": "9e87fe881bb31a37ab95d95227f628c87a7076bc",
       "source_path": "apporo_ha_core_4",
       "config_file": "config.yaml",
       "config_sha256": "sha256:2a73952d4edf349a6e6e5feecdb917598c3026ecdc2bb9199eeb271041658087",
-      "archive_sha256": "sha256:e6b7f73429558dc025431b7e43f08c03595841e08f31dc024f327f229424f54e",
+      "archive_sha256": "sha256:1e0ee5d6b9d81ab29656a77a60ae4ad00d46264d2fe14f46916cc30e2c9dec40",
       "context_fingerprint": "sha256:27c622dd9b3c9193f14ddb164576c83d005a33b2fdcfbea0340f6ca46e1b1d31",
       "material_fingerprint": "sha256:bb465925193f9660fd152358b69b4b0bc08b17a7ed7031c157a61fb9a1c3e2f0",
       "architectures": [
@@ -187,7 +187,7 @@
       "images": {},
       "delivery": "local-source-build",
       "validation": "manifest+source-context+configured-CI (runtime build not certified)",
-      "publisher_run_id": "40825432335",
+      "publisher_run_id": "42760902931",
       "channel": "stable"
     },
     "apporo_ha_core_5": {
@@ -195,11 +195,11 @@
       "name": "Apporo HA Core 5",
       "version": "2.4.3",
       "repository": "WOOWTECH/apporo_ha_multi_ha_core",
-      "source_sha": "2e210e1f75f543e691b3f0aa16220577d819fa0d",
+      "source_sha": "9e87fe881bb31a37ab95d95227f628c87a7076bc",
       "source_path": "apporo_ha_core_5",
       "config_file": "config.yaml",
       "config_sha256": "sha256:310374363d6e87e60079539afe14f491c563de903f0a776babd84ac03952e4d2",
-      "archive_sha256": "sha256:e6b7f73429558dc025431b7e43f08c03595841e08f31dc024f327f229424f54e",
+      "archive_sha256": "sha256:1e0ee5d6b9d81ab29656a77a60ae4ad00d46264d2fe14f46916cc30e2c9dec40",
       "context_fingerprint": "sha256:a8140ac905311ba3e794e21a57889bcb9d6409399a5d74e7c8626d591e05b6d0",
       "material_fingerprint": "sha256:bf047b8f4a70dd7ac49971b1002f51aaa132730dbf4cba6cd08b0dd5816ec4c3",
       "architectures": [
@@ -234,7 +234,7 @@
       "images": {},
       "delivery": "local-source-build",
       "validation": "manifest+source-context+configured-CI (runtime build not certified)",
-      "publisher_run_id": "40825432335",
+      "publisher_run_id": "42760902931",
       "channel": "stable"
     }
   }
